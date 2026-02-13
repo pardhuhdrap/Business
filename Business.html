@@ -12363,5 +12363,34 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 </script>
+<script type="module">
+
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } 
+    from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+  import { getFirestore } 
+    from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+  const firebaseConfig = {
+  apiKey: "AIzaSyCs84twkqpbjkT1ELucIUgVtp8OuWIfguk",
+  authDomain: "business-app-saas.firebaseapp.com",
+  projectId: "business-app-saas",
+  storageBucket: "business-app-saas.firebasestorage.app",
+  messagingSenderId: "623469886290",
+  appId: "1:623469886290:web:6bf3964843cd6badfbd88b"
+};
+
+  // Initialize Firebase
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+
+  // Make available globally
+  window.auth = auth;
+  window.db = db;
+
+  console.log("Firebase Initialized");
+
+</script>
 </body>
 </html>

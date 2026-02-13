@@ -12423,6 +12423,7 @@ window.loginWithGoogle = async function () {
 
   if (userSnap.exists()) {
     console.log("User already linked to org:", userSnap.data().orgId);
+    window.currentOrgId = userSnap.data().orgId;
     return;
   }
 

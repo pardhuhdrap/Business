@@ -12413,63 +12413,52 @@ window.loginWithGoogle = async function () {
 };
 
 // 🔹 AUTH STATE LISTENER (ADD IT HERE)
-  onAuthStateChanged(auth, async (user) => {
-    if (!user) return;
+ onAuthStateChanged(auth, async (user) => {
+  if (!user) return;
 
-    console.log("Logged in:", user.email);
+  console.log("Logged in:", user.email);
 
-    const orgId = await findUserOrganization(user.uid);
+  const userRef = doc(db, "users", user.uid);
+  const userSnap = await getDoc(userRef);
 
-    if (!orgId) {
-      const newOrgId = await createOrganizationForUser(user);
-      console.log("Created new org:", newOrgId);
-    } else {
-      console.log("User belongs to org:", orgId);
+  if (userSnap.exists()) {
+    console.log("User already linked to org:", userSnap.data().orgId);
+    return;
+  }
+
+  // First time login → create org
+  const orgId = "org-" + user.uid;
+
+  // Create organization
+  await setDoc(doc(db, "organizations", orgId), {
+    name: user.displayName + "'s Business",
+    ownerUid: user.uid,
+    planType: "yearly",
+    subscriptionStatus: "active",
+    expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+    maxStaffAccounts: 5,
+    features: {
+      inventory: true,
+      invoice: true,
+      vendor: true
     }
   });
 
-  // 🔹 Helper: Find Org
-  async function findUserOrganization(uid) {
-    const orgsRef = collection(db, "organizations");
-    const snapshot = await getDocs(orgsRef);
+  // Create membership
+  await setDoc(doc(db, "organizations", orgId, "members", user.uid), {
+    role: "owner",
+    joinedAt: new Date()
+  });
 
-    for (const orgDoc of snapshot.docs) {
-      const memberRef = doc(db, "organizations", orgDoc.id, "members", uid);
-      const memberSnap = await getDoc(memberRef);
+  // Create user record
+  await setDoc(userRef, {
+    orgId: orgId,
+    role: "owner",
+    email: user.email
+  });
 
-      if (memberSnap.exists()) {
-        return orgDoc.id;
-      }
-    }
-    return null;
-  }
-
-  // 🔹 Helper: Create Org
-  async function createOrganizationForUser(user) {
-
-    const orgId = "org-" + user.uid;
-
-    await setDoc(doc(db, "organizations", orgId), {
-      name: user.displayName + "'s Business",
-      ownerUid: user.uid,
-      planType: "yearly",
-      subscriptionStatus: "active",
-      expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
-      maxStaffAccounts: 5,
-      features: {
-        inventory: true,
-        invoice: true,
-        vendor: true
-      }
-    });
-
-    await setDoc(doc(db, "organizations", orgId, "members", user.uid), {
-      role: "owner",
-      joinedAt: new Date()
-    });
-
-    return orgId;
-  }
+  console.log("Organization + user record created");
+});
 
   // Make available globally
   window.auth = auth;

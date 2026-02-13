@@ -432,6 +432,21 @@ textarea:focus {
 
     <!-- DASHBOARD -->
     <div id="dashboard" class="screen-container translate-x-0">
+
+      <div style="padding:10px;">
+  <button 
+    onclick="loginWithGoogle()" 
+    style="
+      padding:8px 14px;
+      background:#2563eb;
+      color:white;
+      border:none;
+      border-radius:6px;
+      cursor:pointer;
+    ">
+    Login with Google (Firebase)
+  </button>
+</div>
   <!-- Shown when SIGNED IN -->
   <div
     id="dashboardSignedIn"
@@ -12370,6 +12385,8 @@ document.addEventListener('DOMContentLoaded', () => {
     from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
   import { getFirestore } 
     from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+  import { doc, setDoc, getDoc, collection, query, where, getDocs } 
+    from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
   const firebaseConfig = {
   apiKey: "AIzaSyCs84twkqpbjkT1ELucIUgVtp8OuWIfguk",
@@ -12384,6 +12401,75 @@ document.addEventListener('DOMContentLoaded', () => {
   const app = initializeApp(firebaseConfig);
   const auth = getAuth(app);
   const db = getFirestore(app);
+
+  const provider = new GoogleAuthProvider();
+
+window.loginWithGoogle = async function () {
+  try {
+    await signInWithPopup(auth, provider);
+  } catch (error) {
+    console.error("Login Error:", error);
+  }
+};
+
+// 🔹 AUTH STATE LISTENER (ADD IT HERE)
+  onAuthStateChanged(auth, async (user) => {
+    if (!user) return;
+
+    console.log("Logged in:", user.email);
+
+    const orgId = await findUserOrganization(user.uid);
+
+    if (!orgId) {
+      const newOrgId = await createOrganizationForUser(user);
+      console.log("Created new org:", newOrgId);
+    } else {
+      console.log("User belongs to org:", orgId);
+    }
+  });
+
+  // 🔹 Helper: Find Org
+  async function findUserOrganization(uid) {
+    const orgsRef = collection(db, "organizations");
+    const snapshot = await getDocs(orgsRef);
+
+    for (const orgDoc of snapshot.docs) {
+      const memberRef = doc(db, "organizations", orgDoc.id, "members", uid);
+      const memberSnap = await getDoc(memberRef);
+
+      if (memberSnap.exists()) {
+        return orgDoc.id;
+      }
+    }
+    return null;
+  }
+
+  // 🔹 Helper: Create Org
+  async function createOrganizationForUser(user) {
+
+    const orgId = "org-" + user.uid;
+
+    await setDoc(doc(db, "organizations", orgId), {
+      name: user.displayName + "'s Business",
+      ownerUid: user.uid,
+      planType: "yearly",
+      subscriptionStatus: "active",
+      expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+      maxStaffAccounts: 5,
+      features: {
+        inventory: true,
+        invoice: true,
+        vendor: true
+      }
+    });
+
+    await setDoc(doc(db, "organizations", orgId, "members", user.uid), {
+      role: "owner",
+      joinedAt: new Date()
+    });
+
+    return orgId;
+  }
 
   // Make available globally
   window.auth = auth;

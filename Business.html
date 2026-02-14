@@ -433,6 +433,20 @@ textarea:focus {
     <!-- DASHBOARD -->
     <div id="dashboard" class="screen-container translate-x-0">
 
+      <div style="padding:10px;">
+  <button 
+    onclick="loginWithGoogle()" 
+    style="
+      padding:8px 14px;
+      background:#2563eb;
+      color:white;
+      border:none;
+      border-radius:6px;
+      cursor:pointer;
+    ">
+    Login with Google (Firebase)
+  </button>
+</div>
   <!-- Shown when SIGNED IN -->
   <div
     id="dashboardSignedIn"
@@ -1957,9 +1971,11 @@ window.confirm = function (msg) {
   return false; // fallback if someone uses confirm synchronously
 };
 
-window.navigate = function (id, opts = {}) {
+function navigate(id, opts = {}) {
 
+  // 🔐 FEATURE PROTECTION (ADD HERE)
   if (window.currentFeatures) {
+
     if (id === 'invoice' && !window.currentFeatures.invoice) {
       alert("Invoice module not enabled.");
       return;
@@ -1969,54 +1985,65 @@ window.navigate = function (id, opts = {}) {
       alert("Inventory module not enabled.");
       return;
     }
-  }
 
+    if (id === 'revenue' && !window.currentFeatures.staffPayments) {
+      // optional if you ever gate revenue
+    }
+  }
   const screens = ['dashboard','settings','maps','master','quotation','calendar','invoice','files','recycle','revenue'];
 
   const pushHistory = (opts.pushHistory !== false);
   const skipInit    = (opts.skipInit === true);
 
+ // NEW: adjust dashboard content based on sign-in state
   if (id === 'dashboard') {
     try { updateDashboardForSignIn(); } catch (e) {
       console.warn('updateDashboardForSignIn failed', e);
     }
   }
 
+   // ✅ Show only the requested screen (this was missing)
   screens.forEach(s => {
     const el = document.getElementById(s);
     if (!el) return;
     el.style.transform = (s === id) ? 'translateX(0)' : 'translateX(100%)';
   });
 
+  // History handling for back button
   if (pushHistory && currentScreen !== id) {
     navHistory.push(currentScreen);
   }
   currentScreen = id;
 
+  // Back button visibility
   const backBtn = document.getElementById('backButton');
   if (backBtn) {
     const noHistory = navHistory.length === 0;
     backBtn.classList.toggle('opacity-0', noHistory);
     backBtn.classList.toggle('pointer-events-none', noHistory);
   }
-
+  
+  
+  // Screen-specific initialisation (only if NOT skipping init)
+  
   if (!skipInit) {
     if (id === 'master')    loadMasterData();
     if (id === 'maps') {
       applyDefaultMapValues();
-      try { ensureMapsInitOnFirstShow(); } catch(e) {}
+      // initialize maps & autocomplete once when maps screen is first shown
+      try { ensureMapsInitOnFirstShow(); } catch(e) { console.warn('Maps init failed', e); }
     }
     if (id === 'quotation') populateQuotationFields();
     if (id === 'invoice')   populateInvoiceFields();
     if (id === 'calendar')  renderCalendar();
-    if (id === 'revenue')   initRevenueScreenFromPayments();
+    if (id === 'revenue')   initRevenueScreenFromPayments(); 
     if (id === 'files')     loadFilesUI();
     if (id === 'recycle')   loadRecycleUI();
+    
   }
 
   createLucide();
-};
-
+}
 
 function updateDashboardForSignIn() {
   let signedIn = false;
@@ -11598,6 +11625,7 @@ cleanupOldClientRequestSystemRemoved();
    // init
   renderFilesList();
   renderCalendar();
+
   // 🔒 Force sign-in before using full app
   let firstScreen = 'dashboard';
   try {
@@ -11624,6 +11652,7 @@ cleanupOldClientRequestSystemRemoved();
 
   navigate(firstScreen, { pushHistory: false });
 });
+
 // ===============================
 // 🔒 PWA-safe unsaved-data guard
 // ===============================
@@ -11766,6 +11795,8 @@ const USE_APPDATA = true; // use appDataFolder (hidden) for app data
 const APP_FILENAME = 'myapp-data.json';
 
 let tokenClient = null;
+let accessToken = null;
+let userProfile = null;
 
 function initGoogleTokenClient(){
   if (!window.google || !google.accounts || !google.accounts.oauth2) {
@@ -11815,15 +11846,10 @@ function initGoogleTokenClient(){
   });
 }
 
-function signInToDrive(){
+function signInWithGoogle(){
   if (!tokenClient) initGoogleTokenClient();
   tokenClient.requestAccessToken({ prompt: 'consent' });
 }
-
-window.APP_LOGO_KEY = 'app_logo_dataurl';
-
-let accessToken = null;
-let userProfile = null;
 
 function updateProfileIcon() {
   const avatarEl  = document.getElementById("profileAvatar");
@@ -12164,62 +12190,18 @@ function autoSaveDrive(reason) {
 
 
 async function loadFromDrive(){
-  if (!accessToken) { 
-    alert('Please sign in first'); 
-    return; 
-  }
-
+  if (!accessToken) { alert('Please sign in first'); return; }
   document.getElementById('gdrive-status').innerText = 'Downloading...';
-
   const fileId = await findFileId(APP_FILENAME);
-  if (!fileId) { 
-    alert('No saved file found on Drive'); 
-    document.getElementById('gdrive-status').innerText = 'No file found'; 
-    return; 
-  }
-
-  const r = await fetch(
-    `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
-    { headers: { Authorization: 'Bearer ' + accessToken } }
-  );
-
-  if (!r.ok) { 
-    alert('Download failed: ' + await r.text()); 
-    document.getElementById('gdrive-status').innerText = 'Download failed'; 
-    return; 
-  }
-
-  const payload = await r.json();
-
-  if (!payload || !payload.data) {
-    alert('Drive file has no data.');
-    return;
-  }
-
-  // ===== Merge data into localStorage =====
-  Object.keys(payload.data).forEach(k => {
-    const v = payload.data[k];
-    if (typeof v === 'string') {
-      try { localStorage.setItem(k, v); } catch (e) {}
-    } else {
-      try { localStorage.setItem(k, JSON.stringify(v)); }
-      catch (e) { localStorage.setItem(k, String(v)); }
-    }
+  if (!fileId) { alert('No saved file found on Drive'); document.getElementById('gdrive-status').innerText = 'No file found'; return; }
+  const r = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
+    headers: { Authorization: 'Bearer ' + accessToken }
   });
-
-  // ===== Re-apply UI =====
-  try {
-    if (typeof applySettings === 'function') applySettings();
-    if (typeof renderFilesList === 'function') renderFilesList();
-    if (typeof renderCalendar === 'function') renderCalendar();
-    if (typeof updateSummaryUI === 'function') updateSummaryUI();
-    if (typeof updateInvoiceSummaryUI === 'function') updateInvoiceSummaryUI();
-  } catch (e) {
-    console.warn('Re-apply UI after load failed', e);
-  }
-
-  document.getElementById('gdrive-status').innerText = 'Loaded into localStorage and UI updated';
-  alert('Data loaded and UI updated.');
+  if (!r.ok) { alert('Download failed: ' + await r.text()); document.getElementById('gdrive-status').innerText = 'Download failed'; return; }
+  const payload = await r.json();
+if (!payload || !payload.data) {
+  alert('Drive file has no data.');
+  return;
 }
 
 async function autoSyncFromDrive() {
@@ -12306,6 +12288,8 @@ alert('Data loaded and UI updated.');
 /* Wire up buttons */
 document.addEventListener('DOMContentLoaded', () => {
   // Drive buttons
+  document.getElementById('btnSignIn')?.addEventListener('click', signInWithGoogle);
+  document.getElementById('btnSignOut')?.addEventListener('click', signOutFromGoogle);
   document.getElementById('btnSaveDrive')?.addEventListener('click', saveToDrive);
   document.getElementById('btnLoadDrive')?.addEventListener('click', loadFromDrive);
   initGoogleTokenClient();
@@ -12352,7 +12336,6 @@ document.addEventListener('DOMContentLoaded', () => {
   // ... rest of init ...
    updateProfileIcon();  // keep avatar in sync on first load
 });
-
 </script>
 <!-- Google Identity + Drive helpers end Hari -->
 
@@ -12423,10 +12406,6 @@ document.addEventListener('DOMContentLoaded', () => {
   import { doc, setDoc, getDoc, collection, query, where, getDocs } 
     from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-  import { signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-
-  
-
   const firebaseConfig = {
   apiKey: "AIzaSyCs84twkqpbjkT1ELucIUgVtp8OuWIfguk",
   authDomain: "business-app-saas.firebaseapp.com",
@@ -12453,26 +12432,9 @@ window.loginWithGoogle = async function () {
 
 // 🔹 AUTH STATE LISTENER (ADD IT HERE)
  onAuthStateChanged(auth, async (user) => {
-  if (!user) {
-    console.log("User signed out");
-
-    window.currentOrgId = null;
-    window.currentFeatures = null;
-    window.currentRevenueMode = null;
-    window.currentBusinessType = null;
-
-    // Show signed-out dashboard
-    const signedOut = document.getElementById("dashboardSignedOut");
-    if (signedOut) signedOut.classList.remove("hidden");
-
-    return;
-  }
+  if (!user) return;
 
   console.log("Logged in:", user.email);
-
-   // Hide signed-out dashboard
-  const signedOut = document.getElementById("dashboardSignedOut");
-  if (signedOut) signedOut.classList.add("hidden");
 
   const userRef = doc(db, "users", user.uid);
   const userSnap = await getDoc(userRef);
@@ -12540,27 +12502,7 @@ window.loginWithGoogle = async function () {
   window.currentRevenueMode = orgData.revenueMode;
   window.currentFeatures = orgData.features;
 
-  // Re-initialize dashboard UI after Firebase login
-try {
-  if (typeof updateDashboardForSignIn === "function") {
-    updateDashboardForSignIn();
-  }
-
-  if (typeof updateDashboardUpcomingEvents === "function") {
-    updateDashboardUpcomingEvents();
-  }
-
-  if (typeof updateProfileIcon === "function") {
-    updateProfileIcon();
-  }
-
-} catch (e) {
-  console.warn("Dashboard re-init failed", e);
-}
   setTimeout(() => {
-  if (typeof createLucide === "function") {
-    createLucide();
-  }
   applyFeatureVisibility();
 }, 0);
 
@@ -12585,6 +12527,12 @@ function applyFeatureVisibility() {
     hideElement("inventory");
   }
 
+  // 🔹 Vendor (you said vendor will be inside master screen)
+  if (!window.currentFeatures.vendor) {
+    // Later we will hide only vendor section inside master
+    hideVendorSectionInsideMaster();
+  }
+
   if (!window.currentFeatures.staffPayments) {
     hideElement("staffPayments");
   }
@@ -12598,32 +12546,6 @@ function hideElement(id) {
     el.style.display = "none";
   }
 }
-
-// 🔹 Unified Sign Out (Firebase + Drive)
-async function fullSignOut() {
-  try {
-    await signOut(auth); // Firebase logout
-
-    if (typeof signOutFromGoogle === "function") {
-      signOutFromGoogle(); // Drive logout
-    }
-
-    console.log("Signed out completely");
-
-  } catch (error) {
-    console.error("Sign out error:", error);
-  }
-}
-document.getElementById('btnSignOut')?.addEventListener('click', fullSignOut);
-
-// 🔹 Attach Firebase login to existing Sign In button
-document.addEventListener("DOMContentLoaded", () => {
-  const btn = document.getElementById("btnSignIn");
-  if (btn) {
-    btn.addEventListener("click", window.loginWithGoogle);
-  }
-});
-
   // Make available globally
   window.auth = auth;
   window.db = db;

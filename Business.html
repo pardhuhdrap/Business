@@ -12522,12 +12522,6 @@ function applyFeatureVisibility() {
     hideElement("inventory");
   }
 
-  // 🔹 Vendor (you said vendor will be inside master screen)
-  if (!window.currentFeatures.vendor) {
-    // Later we will hide only vendor section inside master
-    hideVendorSectionInsideMaster();
-  }
-
   if (!window.currentFeatures.staffPayments) {
     hideElement("staffPayments");
   }

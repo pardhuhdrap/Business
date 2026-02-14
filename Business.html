@@ -433,20 +433,6 @@ textarea:focus {
     <!-- DASHBOARD -->
     <div id="dashboard" class="screen-container translate-x-0">
 
-      <div style="padding:10px;">
-  <button 
-    onclick="loginWithGoogle()" 
-    style="
-      padding:8px 14px;
-      background:#2563eb;
-      color:white;
-      border:none;
-      border-radius:6px;
-      cursor:pointer;
-    ">
-    Login with Google (Firebase)
-  </button>
-</div>
   <!-- Shown when SIGNED IN -->
   <div
     id="dashboardSignedIn"
@@ -12546,6 +12532,14 @@ function hideElement(id) {
     el.style.display = "none";
   }
 }
+// 🔹 Attach Firebase login to existing Sign In button
+document.addEventListener("DOMContentLoaded", () => {
+  const btn = document.getElementById("btnSignIn");
+  if (btn) {
+    btn.addEventListener("click", window.loginWithGoogle);
+  }
+});
+
   // Make available globally
   window.auth = auth;
   window.db = db;

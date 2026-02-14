@@ -12424,6 +12424,15 @@ window.loginWithGoogle = async function () {
   if (userSnap.exists()) {
     console.log("User already linked to org:", userSnap.data().orgId);
     window.currentOrgId = userSnap.data().orgId;
+    // ✅ LOAD ORG DATA HERE
+    const orgSnap = await getDoc(doc(db, "organizations", window.currentOrgId));
+    const orgData = orgSnap.data();
+
+    window.currentBusinessType = orgData.businessType || "event";
+    window.currentRevenueMode = orgData.revenueMode || "quotation";
+    window.currentFeatures = orgData.features || {};
+
+    console.log("Existing user loaded:", window.currentOrgId);
     return;
   }
 
@@ -12438,10 +12447,14 @@ window.loginWithGoogle = async function () {
     subscriptionStatus: "active",
     expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
     maxStaffAccounts: 5,
+    businessType: "event",              // ✅ Add default
+    revenueMode: "quotation",           // ✅ Add default
     features: {
+      quotation: true,
+      invoice: false,
       inventory: true,
-      invoice: true,
-      vendor: true
+      vendor: false,
+      staffPayments: true
     }
   });
 
@@ -12458,7 +12471,17 @@ window.loginWithGoogle = async function () {
     email: user.email
   });
 
-  console.log("Organization + user record created");
+   window.currentOrgId = orgId;
+
+  // ✅ LOAD ORG DATA HERE ALSO
+  const orgSnap = await getDoc(doc(db, "organizations", orgId));
+  const orgData = orgSnap.data();
+
+  window.currentBusinessType = orgData.businessType;
+  window.currentRevenueMode = orgData.revenueMode;
+  window.currentFeatures = orgData.features;
+
+  console.log("New organization created:", orgId);
 });
 
   // Make available globally

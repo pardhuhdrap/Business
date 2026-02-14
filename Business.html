@@ -12420,9 +12420,26 @@ window.loginWithGoogle = async function () {
 
 // 🔹 AUTH STATE LISTENER (ADD IT HERE)
  onAuthStateChanged(auth, async (user) => {
-  if (!user) return;
+  if (!user) {
+    console.log("User signed out");
+
+    window.currentOrgId = null;
+    window.currentFeatures = null;
+    window.currentRevenueMode = null;
+    window.currentBusinessType = null;
+
+    // Show signed-out dashboard
+    const signedOut = document.getElementById("dashboardSignedOut");
+    if (signedOut) signedOut.classList.remove("hidden");
+
+    return;
+  }
 
   console.log("Logged in:", user.email);
+
+   // Hide signed-out dashboard
+  const signedOut = document.getElementById("dashboardSignedOut");
+  if (signedOut) signedOut.classList.add("hidden");
 
   const userRef = doc(db, "users", user.uid);
   const userSnap = await getDoc(userRef);

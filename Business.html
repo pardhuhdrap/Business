@@ -12480,6 +12480,23 @@ window.loginWithGoogle = async function () {
   window.currentRevenueMode = orgData.revenueMode;
   window.currentFeatures = orgData.features;
 
+  // Re-initialize dashboard UI after Firebase login
+try {
+  if (typeof updateDashboardForSignIn === "function") {
+    updateDashboardForSignIn();
+  }
+
+  if (typeof updateDashboardUpcomingEvents === "function") {
+    updateDashboardUpcomingEvents();
+  }
+
+  if (typeof updateProfileIcon === "function") {
+    updateProfileIcon();
+  }
+
+} catch (e) {
+  console.warn("Dashboard re-init failed", e);
+}
   setTimeout(() => {
   applyFeatureVisibility();
 }, 0);

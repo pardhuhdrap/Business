@@ -11741,8 +11741,6 @@ const USE_APPDATA = true; // use appDataFolder (hidden) for app data
 const APP_FILENAME = 'myapp-data.json';
 
 let tokenClient = null;
-let accessToken = null;
-let userProfile = null;
 
 function initGoogleTokenClient(){
   if (!window.google || !google.accounts || !google.accounts.oauth2) {
@@ -11796,6 +11794,11 @@ function signInToDrive(){
   if (!tokenClient) initGoogleTokenClient();
   tokenClient.requestAccessToken({ prompt: 'consent' });
 }
+
+const APP_LOGO_KEY = 'app_logo_dataurl';
+
+let accessToken = null;
+let userProfile = null;
 
 function updateProfileIcon() {
   const avatarEl  = document.getElementById("profileAvatar");

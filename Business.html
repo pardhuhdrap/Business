@@ -1957,7 +1957,7 @@ window.confirm = function (msg) {
   return false; // fallback if someone uses confirm synchronously
 };
 
-function navigate(id, opts = {}) {
+window.navigate = function(id, opts = {}) {
 
   // 🔐 FEATURE PROTECTION (ADD HERE)
   if (window.currentFeatures) {
@@ -2030,7 +2030,6 @@ function navigate(id, opts = {}) {
 
   createLucide();
 }
-window.navigate = navigate;
 
 function updateDashboardForSignIn() {
   let signedIn = false;

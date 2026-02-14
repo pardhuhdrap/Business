@@ -11611,32 +11611,6 @@ cleanupOldClientRequestSystemRemoved();
    // init
   renderFilesList();
   renderCalendar();
-
-  // 🔒 Force sign-in before using full app
-  let firstScreen = 'dashboard';
-  try {
-    const isSigned = localStorage.getItem('gdrive_signed_in') === '1';
-
-    if (isSigned) {
-      firstScreen = 'dashboard';
-    } else {
-      // send user straight to Settings so they see the Google sign-in area
-      firstScreen = 'settings';
-
-      const msg =
-        'Please sign in with Google Drive to use the app.\n' +
-        'Go to Settings and tap "Sign in with Google".';
-      if (typeof showMessage === 'function') {
-        showMessage(msg, 'Sign in required');
-      } else {
-        alert(msg);
-      }
-    }
-  } catch (e) {
-    console.warn('Sign-in check failed, falling back to dashboard', e);
-  }
-
-  navigate(firstScreen, { pushHistory: false });
 });
 
 // ===============================
@@ -12418,9 +12392,25 @@ window.loginWithGoogle = async function () {
 
 // 🔹 AUTH STATE LISTENER (ADD IT HERE)
  onAuthStateChanged(auth, async (user) => {
-  if (!user) return;
+  if (!user) {
+    console.log("User signed out");
+
+    const signedOut = document.getElementById("dashboardSignedOut");
+    if (signedOut) signedOut.classList.remove("hidden");
+
+    return;
+  }
 
   console.log("Logged in:", user.email);
+
+  // Hide signed-out dashboard
+  const signedOut = document.getElementById("dashboardSignedOut");
+  if (signedOut) signedOut.classList.add("hidden");
+
+  // ✅ OPEN DASHBOARD
+  if (typeof navigate === "function") {
+    navigate('dashboard', { pushHistory: false });
+  }
 
   const userRef = doc(db, "users", user.uid);
   const userSnap = await getDoc(userRef);

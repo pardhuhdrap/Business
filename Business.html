@@ -11832,7 +11832,7 @@ function initGoogleTokenClient(){
   });
 }
 
-function signInWithGoogle(){
+function signInToDrive(){
   if (!tokenClient) initGoogleTokenClient();
   tokenClient.requestAccessToken({ prompt: 'consent' });
 }
@@ -12274,8 +12274,6 @@ alert('Data loaded and UI updated.');
 /* Wire up buttons */
 document.addEventListener('DOMContentLoaded', () => {
   // Drive buttons
-  document.getElementById('btnSignIn')?.addEventListener('click', signInWithGoogle);
-  document.getElementById('btnSignOut')?.addEventListener('click', signOutFromGoogle);
   document.getElementById('btnSaveDrive')?.addEventListener('click', saveToDrive);
   document.getElementById('btnLoadDrive')?.addEventListener('click', loadFromDrive);
   initGoogleTokenClient();
@@ -12391,6 +12389,9 @@ document.addEventListener('DOMContentLoaded', () => {
     from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
   import { doc, setDoc, getDoc, collection, query, where, getDocs } 
     from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+  import { signOut } from "https://www.gstatic.com/firebasejs/10.x.x/firebase-auth.js";
+  
 
   const firebaseConfig = {
   apiKey: "AIzaSyCs84twkqpbjkT1ELucIUgVtp8OuWIfguk",
@@ -12532,6 +12533,24 @@ function hideElement(id) {
     el.style.display = "none";
   }
 }
+
+// 🔹 Unified Sign Out (Firebase + Drive)
+async function fullSignOut() {
+  try {
+    await signOut(auth); // Firebase logout
+
+    if (typeof signOutFromGoogle === "function") {
+      signOutFromGoogle(); // Drive logout
+    }
+
+    console.log("Signed out completely");
+
+  } catch (error) {
+    console.error("Sign out error:", error);
+  }
+}
+document.getElementById('btnSignOut')?.addEventListener('click', fullSignOut);
+
 // 🔹 Attach Firebase login to existing Sign In button
 document.addEventListener("DOMContentLoaded", () => {
   const btn = document.getElementById("btnSignIn");

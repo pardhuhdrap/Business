@@ -12432,6 +12432,9 @@ window.loginWithGoogle = async function () {
     window.currentRevenueMode = orgData.revenueMode || "quotation";
     window.currentFeatures = orgData.features || {};
 
+    setTimeout(() => {
+  applyFeatureVisibility();
+}, 0);
     console.log("Existing user loaded:", window.currentOrgId);
     return;
   }
@@ -12481,9 +12484,50 @@ window.loginWithGoogle = async function () {
   window.currentRevenueMode = orgData.revenueMode;
   window.currentFeatures = orgData.features;
 
+  setTimeout(() => {
+  applyFeatureVisibility();
+}, 0);
+
   console.log("New organization created:", orgId);
+
+return;
 });
 
+// 👇 ADD FROM HERE
+
+function applyFeatureVisibility() {
+
+  if (!window.currentFeatures) return;
+
+  if (!window.currentFeatures.invoice) {
+    hideElement("menu-invoice");
+    hideElement("screen-invoice");
+  }
+
+  if (!window.currentFeatures.inventory) {
+    hideElement("menu-inventory");
+    hideElement("screen-inventory");
+  }
+
+  if (!window.currentFeatures.vendor) {
+    hideElement("menu-vendor");
+    hideElement("screen-vendor");
+  }
+
+  if (!window.currentFeatures.staffPayments) {
+    hideElement("menu-staffPayments");
+    hideElement("screen-staffPayments");
+  }
+
+  console.log("Feature visibility applied");
+}
+
+function hideElement(id) {
+  const el = document.getElementById(id);
+  if (el) {
+    el.style.display = "none";
+  }
+}
   // Make available globally
   window.auth = auth;
   window.db = db;

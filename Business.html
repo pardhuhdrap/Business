@@ -472,7 +472,7 @@ textarea:focus {
       <i data-lucide="clipboard-list" class="w-8 h-8 app-color-text"></i>
       <span class="mt-2 text-sm font-medium text-gray-700">Quotation</span>
     </div>
-    <div class="app-icon" onclick="navigate('invoice')">
+    <div id="invoiceMenuBtn" class="app-icon" onclick="navigate('invoice')">
       <i data-lucide="indian-rupee" class="w-8 h-8 app-color-text"></i>
       <span class="mt-2 text-sm font-medium text-gray-700">Invoice</span>
     </div>
@@ -12518,6 +12518,7 @@ function applyFeatureVisibility() {
   if (!window.currentFeatures) return;
 
   if (!window.currentFeatures.invoice) {
+    hideElement("invoiceMenuBtn");
     hideElement("invoice");
   }
 

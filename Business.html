@@ -1972,6 +1972,24 @@ window.confirm = function (msg) {
 };
 
 function navigate(id, opts = {}) {
+
+  // 🔐 FEATURE PROTECTION (ADD HERE)
+  if (window.currentFeatures) {
+
+    if (id === 'invoice' && !window.currentFeatures.invoice) {
+      alert("Invoice module not enabled.");
+      return;
+    }
+
+    if (id === 'inventory' && !window.currentFeatures.inventory) {
+      alert("Inventory module not enabled.");
+      return;
+    }
+
+    if (id === 'revenue' && !window.currentFeatures.staffPayments) {
+      // optional if you ever gate revenue
+    }
+  }
   const screens = ['dashboard','settings','maps','master','quotation','calendar','invoice','files','recycle','revenue'];
 
   const pushHistory = (opts.pushHistory !== false);
@@ -12500,23 +12518,22 @@ function applyFeatureVisibility() {
   if (!window.currentFeatures) return;
 
   if (!window.currentFeatures.invoice) {
-    hideElement("menu-invoice");
-    hideElement("screen-invoice");
+    hideElement("invoice");
   }
 
+  // 🔹 Inventory Screen (if exists in future)
   if (!window.currentFeatures.inventory) {
-    hideElement("menu-inventory");
-    hideElement("screen-inventory");
+    hideElement("inventory");
   }
 
+  // 🔹 Vendor (you said vendor will be inside master screen)
   if (!window.currentFeatures.vendor) {
-    hideElement("menu-vendor");
-    hideElement("screen-vendor");
+    // Later we will hide only vendor section inside master
+    hideVendorSectionInsideMaster();
   }
 
   if (!window.currentFeatures.staffPayments) {
-    hideElement("menu-staffPayments");
-    hideElement("screen-staffPayments");
+    hideElement("staffPayments");
   }
 
   console.log("Feature visibility applied");

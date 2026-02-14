@@ -12499,6 +12499,9 @@ try {
   console.warn("Dashboard re-init failed", e);
 }
   setTimeout(() => {
+  if (typeof createLucide === "function") {
+    createLucide();
+  }
   applyFeatureVisibility();
 }, 0);
 

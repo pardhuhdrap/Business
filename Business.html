@@ -488,7 +488,17 @@ textarea:focus {
   <div
     id="dashboardSignedOut"
     class="hidden h-full flex items-center justify-center"
-  ></div>
+  >
+    <div class="text-center px-4">
+      <div class="text-lg font-semibold text-gray-800 mb-2">
+        Sign in to view the dashboard
+      </div>
+      <p class="text-xs text-gray-500">
+        Please sign in with Google to view the app dashboard and continue operations.
+      </p>
+    </div>
+  </div>
+</div>
 
 
     <!-- SETTINGS (kept compact but functional) -->
@@ -2021,27 +2031,7 @@ function navigate(id, opts = {}) {
   createLucide();
 }
 
-function updateDashboardForSignIn() {
-  let signedIn = false;
-  try {
-    signedIn = localStorage.getItem('gdrive_signed_in') === '1';
-  } catch (e) {
-    console.warn('Sign-in read failed:', e);
-  }
 
-  const signedInEl  = document.getElementById('dashboardSignedIn');
-  const signedOutEl = document.getElementById('dashboardSignedOut');
-
-  if (!signedInEl || !signedOutEl) return;
-
-  if (signedIn) {
-    signedInEl.classList.remove('hidden');
-    signedOutEl.classList.add('hidden');
-  } else {
-    signedInEl.classList.add('hidden');
-    signedOutEl.classList.remove('hidden');
-  }
-}
 
 
 function formatINR(num) {
@@ -2313,26 +2303,7 @@ async function archiveSheetRow({ webappUrl, secretToken, rowIndex, ownerId }) {
     return { ok:false, message:String(err) };
   }
 }
-// === Auto-save to Google Drive (simple debounce) ===
-let autoSaveDriveTimer = null;
 
-function scheduleAutoSave(reason = '') {
-  // Only try if Drive is signed in and saveToDrive exists
-  if (!window.accessToken || typeof saveToDrive !== 'function') return;
-
-  // Debounce: if many changes happen quickly, we save once after 1s
-  clearTimeout(autoSaveDriveTimer);
-  autoSaveDriveTimer = setTimeout(() => {
-    console.log('Auto-saving to Drive because:', reason);
-    // Uses your existing saveToDrive (shows same status + alerts)
-    saveToDrive();
-  }, 1000);
-}
-
-// Simple wrapper so the rest of the code can call autoSaveDrive()
-function autoSaveDrive(reason = '') {
-  scheduleAutoSave(reason || 'change');
-}
 
 
 /* -------------------------
@@ -7779,15 +7750,7 @@ inv.paymentProfit = Number.isFinite(profit) ? Number(profit) : 0;
 
   updateEditButtonsByPaymentStatus(inv);
 
-  // 🔄 Auto-save to Drive (works for both Save + Paid)
-  try {
-    if (typeof autoSaveDrive === 'function' && window.accessToken) {
-      autoSaveDrive(markCompleted ? 'payment marked paid' : 'payment info saved');
-    }
-  } catch (e) {
-    console.warn('Auto-save to Drive after payment save failed:', e);
-  }
-
+  
   // Small toast + close
   if (typeof showUpdateToast === 'function') {
     showUpdateToast(markCompleted ? 'Payment marked as Paid' : 'Payment info saved');
@@ -9798,20 +9761,6 @@ function initClientRequestsFloatingUi() {
 
   if (!app || !fab || !panel) return;
 
-    // 🔒 Hide / show floating button based on sign-in
-  try {
-    const isSigned = localStorage.getItem('gdrive_signed_in') === '1';
-    if (!isSigned) {
-      fab.classList.add('hidden');
-      panel.classList.add('hidden');
-    } else {
-      fab.classList.remove('hidden');
-      panel.classList.add('hidden');
-    }
-  } catch (e) {
-    console.warn('Client-req FAB sign-in check failed', e);
-  }
-
 
   // ------------- OPEN / CLOSE PANEL ON TAP -------------
   let clickAllowedAfterDrag = true;
@@ -11748,58 +11697,8 @@ let tokenClient = null;
 let accessToken = null;
 let userProfile = null;
 
-function initGoogleTokenClient(){
-  if (!window.google || !google.accounts || !google.accounts.oauth2) {
-    setTimeout(initGoogleTokenClient, 500);
-    return;
-  }
-  if (tokenClient) return;
-  tokenClient = google.accounts.oauth2.initTokenClient({
-    client_id: CLIENT_ID,
-    scope: (USE_APPDATA ? 'https://www.googleapis.com/auth/drive.appdata' : 'https://www.googleapis.com/auth/drive.file') + ' openid email profile',
-    callback: (resp) => {
-      if (resp.error) {
-        console.error('Token error', resp);
-        document.getElementById('gdrive-status').innerText = 'Sign-in required';
-        // 🔴 Treat silent failure as signed out
-        accessToken = null;
-        userProfile = null;
-        try {
-          localStorage.removeItem('gdrive_signed_in');
-        } catch (e) {}
 
-        // Reset UI similar to signOutFromGoogle
-        document.getElementById('gdrive-user').innerText = 'Not signed in';
-        document.getElementById('btnSignIn').style.display  = 'inline-block';
-        document.getElementById('btnSignOut').style.display = 'none';
-        document.getElementById('btnSaveDrive').style.display = 'none';
-        document.getElementById('btnLoadDrive').style.display = 'none';
 
-        // Hide client requests FAB when not signed in
-        try {
-          const fab   = document.getElementById('clientRequestsFab');
-          const panel = document.getElementById('clientRequestsPanel');
-          if (fab)   fab.classList.add('hidden');
-          if (panel) panel.classList.add('hidden');
-        } catch (e) {}
-
-        // Update dashboard + avatar
-        try { updateDashboardForSignIn(); } catch (e) {}
-        updateProfileIcon();
-
-        return;
-      }
-      accessToken = resp.access_token;
-      window.accessToken = accessToken;
-      onSignedIn();
-    }
-  });
-}
-
-function signInWithGoogle(){
-  if (!tokenClient) initGoogleTokenClient();
-  tokenClient.requestAccessToken({ prompt: 'consent' });
-}
 
 function updateProfileIcon() {
   const avatarEl  = document.getElementById("profileAvatar");
@@ -11808,7 +11707,6 @@ function updateProfileIcon() {
   if (!avatarEl || !defaultEl) return;
 
   const logoData = localStorage.getItem(APP_LOGO_KEY) || "";
-  const isSigned = localStorage.getItem('gdrive_signed_in') === '1';
 
   if (isSigned && logoData) {
     // show app logo as avatar
@@ -11823,90 +11721,6 @@ function updateProfileIcon() {
 }
 
 
-async function onSignedIn() {
-  if (!accessToken) return;
-  document.getElementById('gdrive-status').innerText = 'Signed in — fetching profile.';
-  try {
-    const r = await fetch('https://www.googleapis.com/oauth2/v1/userinfo?alt=json', {
-      headers: { Authorization: 'Bearer ' + accessToken }
-    });
-    if (r.ok) {
-      userProfile = await r.json();
-
-      document.getElementById('gdrive-user').innerText =
-        userProfile.email || 'Signed in';
-      document.getElementById('btnSignIn').style.display  = 'none';
-      document.getElementById('btnSignOut').style.display = 'inline-block';
-      document.getElementById('btnSaveDrive').style.display = 'inline-block';
-      document.getElementById('btnLoadDrive').style.display = 'inline-block';
-      document.getElementById('gdrive-status').innerText =
-        'Signed in as ' + (userProfile.email || '');
-
-      const userSettingsBtn = document.getElementById('btnUserProfileSettings');
-      if (userSettingsBtn) userSettingsBtn.style.display = 'block';
-
-      // remember we are signed in
-      try { localStorage.setItem('gdrive_signed_in', '1'); } catch (e) {}
-
-      // 💾 Also remember email as ownerId for client requests
-      try {
-        if (userProfile.email) {
-          localStorage.setItem(
-            'client_req_owner_email',
-            String(userProfile.email).trim().toLowerCase()
-          );
-        }
-      } catch (e) {
-        console.warn('Could not store client_req_owner_email', e);
-      }
-
-      // ✅ Show floating Client Requests FAB after sign-in
-      try {
-        const fab   = document.getElementById('clientRequestsFab');
-        const panel = document.getElementById('clientRequestsPanel');
-        if (fab)   fab.classList.remove('hidden');
-        if (panel) panel.classList.add('hidden');
-      } catch (e) {
-        console.warn('Failed to update client-req FAB on sign-in', e);
-      }
-
-      try { updateDashboardForSignIn(); } catch (e) {}
-
-      // 🔁 update header avatar based on sign-in + app logo
-      updateProfileIcon();
-
-      // === AUTO-LOAD FROM DRIVE ON SIGN-IN ===
-      document.getElementById('gdrive-status').innerText =
-        'Signed in — loading saved data...';
-
-      try {
-        await loadFromDrive();   // merges data into localStorage
-
-        // Re-apply UI immediately so images/letterheads show
-        if (typeof applySettings === 'function') applySettings();
-        if (typeof renderFilesList === 'function') renderFilesList();
-        if (typeof renderCalendar === 'function') renderCalendar();
-        if (typeof updateSummaryUI === 'function') updateSummaryUI();
-        if (typeof updateInvoiceSummaryUI === 'function') updateInvoiceSummaryUI();
-        try { updateDashboardUpcomingEvents(); } catch (e) {}
-
-        document.getElementById('gdrive-status').innerText = 'Loaded saved data';
-      } catch (e) {
-        console.warn('Auto-load failed', e);
-        document.getElementById('gdrive-status').innerText =
-          'Signed in (no saved data)';
-      }
-      // === END AUTO-LOAD SECTION ===
-    } else {
-      document.getElementById('gdrive-status').innerText =
-        'Failed to fetch profile';
-    }
-  } catch (e) {
-    console.error(e);
-    document.getElementById('gdrive-status').innerText =
-      'Failed to fetch profile';
-  }
-}
 
 function signOutFromGoogle(){
   const resetUi = () => {
@@ -11920,7 +11734,7 @@ function signOutFromGoogle(){
     document.getElementById('btnSaveDrive').style.display = 'none';
     document.getElementById('btnLoadDrive').style.display = 'none';
     document.getElementById('gdrive-status').innerText = '';
-    localStorage.removeItem('gdrive_signed_in');
+    
         // 🔒 Hide floating Client Requests FAB when signed out
     try {
       const fab   = document.getElementById('clientRequestsFab');
@@ -11939,15 +11753,6 @@ function signOutFromGoogle(){
     updateProfileIcon();
   };
 
-  if (accessToken) {
-    fetch('https://oauth2.googleapis.com/revoke?token=' + accessToken, {
-      method: 'POST'
-    })
-      .catch(e => console.warn('Revoke failed', e))
-      .finally(resetUi);
-  } else {
-    resetUi();
-  }
 }
 
 
@@ -12242,7 +12047,6 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('btnSignOut')?.addEventListener('click', signOutFromGoogle);
   document.getElementById('btnSaveDrive')?.addEventListener('click', saveToDrive);
   document.getElementById('btnLoadDrive')?.addEventListener('click', loadFromDrive);
-  initGoogleTokenClient();
 
   // profile dropdown open/close
   const profileBtn  = document.getElementById('profileMenuButton');
@@ -12267,6 +12071,7 @@ document.addEventListener('DOMContentLoaded', () => {
       profileMenu.classList.add('hidden');
     }
   });
+
   // ... rest of init ...
    updateProfileIcon();  // keep avatar in sync on first load
 });

@@ -12277,22 +12277,6 @@ document.addEventListener('DOMContentLoaded', () => {
       profileMenu.classList.add('hidden');
     }
   });
-
-  // --- silent token re-acquire if user was signed-in previously ---
-  try {
-    const wasSigned = localStorage.getItem('gdrive_signed_in') === '1';
-    if (wasSigned) {
-      if (!tokenClient) initGoogleTokenClient();
-      try {
-        tokenClient.requestAccessToken({ prompt: '' });
-        console.log('Attempting silent token refresh.');
-      } catch (err) {
-        console.warn('Silent token request threw:', err);
-      }
-    }
-  } catch (e) {
-    console.warn('Silent refresh check failed:', e);
-  }
   // ... rest of init ...
    updateProfileIcon();  // keep avatar in sync on first load
 });
